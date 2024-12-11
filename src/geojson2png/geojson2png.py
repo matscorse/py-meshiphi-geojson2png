@@ -52,7 +52,7 @@ def create_amsr2_colormap():
     """
     sic_colours = np.ones((100,4))
 
-    sic_colours[00:10]=hex_to_rgba('#00008bff')
+    sic_colours[00:10]=hex_to_rgba('#00008b00')
     sic_colours[10:20]=hex_to_rgba('#1e90ffff')
     sic_colours[20:30]=hex_to_rgba('#1efaa0ff')
     sic_colours[30:40]=hex_to_rgba('#228b22ff')
@@ -67,20 +67,25 @@ def create_amsr2_colormap():
     sic_colours[99:  ]=hex_to_rgba('#78005aff')
 
     sic_cmap = ListedColormap(sic_colours)
-    sic_cmap.set_bad('gray')
+    sic_cmap.set_bad(color='black')
     return sic_cmap
 
 
-def convert_to_png(geojson_filepath: os.path, xscale, yscale, dpi, amsr_palette):
+def convert_to_png(geojson_filepath: os.path, xscale, yscale, dpi, amsr_palette, criteria):
 
     df = gpd.read_file(geojson_filepath)
     bounds = df.geometry.total_bounds
     fig, ax = plt.subplots(figsize = (xscale, yscale))
+    default_cmap = 'coolwarm'
+
+    if str(criteria) == 'fuel':
+        df.to_crs(epsg=4326).plot(column='inaccessible', ax=ax, cmap = 'RdYlBu')
+        default_cmap = 'Wistia'
 
     if amsr_palette:
-        df.to_crs(epsg=4326).plot(column='SIC', ax=ax, edgecolor='grey', linewidth=0.5, cmap = create_amsr2_colormap())
+        df.to_crs(epsg=4326).plot(column=str(criteria), ax=ax, edgecolor='grey', linewidth=0.5, cmap = create_amsr2_colormap())
     else:
-        df.to_crs(epsg=4326).plot(column='SIC', ax=ax, edgecolor='grey', linewidth=0.5, cmap = 'coolwarm')
+        df.to_crs(epsg=4326).plot(column=str(criteria), ax=ax, edgecolor='grey', linewidth=0.5, cmap = default_cmap)
     
     df.to_crs(epsg=4326).plot(column='land', ax=ax, edgecolor='brown', linewidth=0.5, cmap = 'copper')
 
@@ -99,6 +104,7 @@ def main():
     parser.add_argument("-y", "--yscale", help="HeightScale in inches, default="+str(_YSCALE), action="store", dest='yscale', default=_YSCALE)
     parser.add_argument("-d", "--dpi", help="Output resolution DPI, default="+str(_DPI), action="store", dest='dpi', default=_DPI)
     parser.add_argument("-p", "--palette_amsr", help="Use the AMSR2 colormap palette instead of the default", action="store_true", dest='palette', default=False)
+    parser.add_argument("-c", "--criteria", help="Use alternate colourmap criteria, instead of default SIC", action="store", dest='criteria', default='SIC')
     parser.add_argument("files", help="One or more Meshiphi GEOJSON mesh file path(s)", type=str, nargs='+')
     args = parser.parse_args()
 
@@ -108,7 +114,7 @@ def main():
     checked_files = check_input_filenames(args.files)
 
     for geojson_filepath in checked_files:
-        convert_to_png(geojson_filepath, args.xscale, args.yscale, args.dpi, args.palette)
+        convert_to_png(geojson_filepath, args.xscale, args.yscale, args.dpi, args.palette, args.criteria)
 
 
 
